@@ -14,6 +14,12 @@ from django.conf.urls import patterns
 urlpatterns = patterns(
     'home_application.views',
     (r'^$', 'home'),
-    (r'^dev-guide/$', 'dev_guide'),
-    (r'^contactus/$', 'contactus'),
+    (r'^index/$', 'home'),
+    (r'^history/$', 'history'),
+    (r'^api/test/$', 'test'),
+    (r'^search_set/$', 'search_set'),
+    (r'^search_host/$', 'search_host'),
+    (r'^executeJob/$', 'execute_job'),
+    (r'^search_history/$', 'search_history'),
+
 )
