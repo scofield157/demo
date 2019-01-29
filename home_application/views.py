@@ -11,27 +11,31 @@ See the License for the specific language governing permissions and limitations 
 import datetime
 import json
 
-from blueking.component.shortcuts import get_client_by_request
+import requests
+from django.utils import translation
+
+from blueking.component.shortcuts import get_client_by_request, logger
 from common.mymako import render_mako_context, render_json
+from conf.default import APP_ID, APP_TOKEN, BK_PAAS_HOST
 from home_application.celery_tasks import async_task
 from home_application.models import executeHistory
+
+HEADERS = {
+    'Content-type': 'application/json'
+}
 
 
 def home(request):
     """
     首页
     """
-    client = get_client_by_request(request)
-    biz_param = {
-        "fields": [
-            "bk_biz_id",
-            "bk_biz_name"
-        ]
-    }
-    biz_result = client.cc.search_business(biz_param)
-    if biz_result and biz_result.get('result'):
-        return render_mako_context(request, '/home_application/index.html',
-                                   {'bizList': biz_result.get('data').get('info')})
+    app_list = get_app_by_user(request.COOKIES['bk_token'])
+    for x in app_list:
+        if x.get("app_name") == u'\u8d44\u6e90\u6c60' or x.get("app_name") == 'Resource pool':
+            app_list.remove(x)
+            break
+    return render_mako_context(request, '/home_application/index.html',
+                               {'bizList': app_list})
 
 
 def history(request):
@@ -233,3 +237,64 @@ def search_history(request):
         display_list.append(temp)
     return render_mako_context(request, '/home_application/historyTable.html',
                                {'historyList': display_list})
+
+
+def get_data_by_api(url, request_data, method='GET', headers=True):
+    """
+    @summary:组装接口
+    """
+    language_header = {
+        'blueking-language': translation.get_language()
+    }
+    request_info = "url: {url}: request_data: {request_data}".format(
+        url=url, request_data=str(request_data)
+    )
+    logger.info(request_info)
+    try:
+        if method == 'POST':
+            request_data = json.loads(request_data)
+            request_data.update({'app_code': APP_ID, 'app_secret': APP_TOKEN})
+            request_data = json.dumps(request_data)
+            if headers:
+                HEADERS.update(language_header)
+                data = requests.post(url, request_data, headers=HEADERS, timeout=300)
+            else:
+                data = requests.post(url, request_data, headers=language_header)
+            logger.info("url: {url}, request_data: {request_data}, response: {response}".format(
+                url=url, request_data=str(request_data), response=json.loads(data.text)
+            ))
+            return data
+        else:
+            url = BK_PAAS_HOST + url
+            request_data.update({'app_code': APP_ID, 'app_secret': APP_TOKEN})
+            result = requests.get(url, request_data, headers=language_header, timeout=300)
+            data = json.loads(result.text)['data']
+            logger.info("url: {url}, request_data: {request_data}, response: {response}".format(
+                url=url, request_data=str(request_data), response=json.loads(result.text)
+            ))
+            if data is None:
+                data = []
+            return data
+    except Exception as e:
+        return []
+
+
+def get_app_by_user(bk_token):
+    """
+    @summary:查询用户有权限的业务
+    """
+    data = get_data_by_api('/api/c/compapi/cc/get_app_by_user/',
+                           {'bk_token': bk_token})
+    app_list = []
+    for app in data:
+        try:
+            app_list.append({
+                "bk_biz_name": app['ApplicationName'],
+                "bk_biz_id": app['ApplicationID']
+            })
+        except KeyError:
+            app_list.append({
+                "bk_biz_name": app['ApplicationName'],
+                "bk_biz_id": app['ApplicationID']
+            })
+    return app_list
