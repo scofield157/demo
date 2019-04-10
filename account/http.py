@@ -17,7 +17,6 @@ Rules:
 """
 
 import requests
-
 from django.conf import settings
 
 from common.log import logger
@@ -35,15 +34,15 @@ def _gen_header():
 def _http_request(method, url, headers=None, data=None):
     try:
         if method == "GET":
-            resp = requests.get(url=url, headers=headers, params=data)
+            resp = requests.get(url=url, headers=headers, params=data, verify=False)
         elif method == "HEAD":
-            resp = requests.head(url=url, headers=headers)
+            resp = requests.head(url=url, headers=headers, verify=False)
         elif method == "POST":
-            resp = requests.post(url=url, headers=headers, json=data)
+            resp = requests.post(url=url, headers=headers, json=data, verify=False)
         elif method == "DELETE":
-            resp = requests.delete(url=url, headers=headers, json=data)
+            resp = requests.delete(url=url, headers=headers, json=data, verify=False)
         elif method == "PUT":
-            resp = requests.put(url=url, headers=headers, json=data)
+            resp = requests.put(url=url, headers=headers, json=data, verify=False)
         else:
             return False, None
     except requests.exceptions.RequestException:
@@ -52,8 +51,9 @@ def _http_request(method, url, headers=None, data=None):
     else:
         if resp.status_code != 200:
             content = resp.content[:100] if resp.content else ''
-            logger.error("login http request error! type: %s, url: %s, data: %s, response_status_code: %s, response_content: %s"  # noqa
-                         % (method, url, str(data), resp.status_code, content))
+            logger.error(
+                "login http request error! type: %s, url: %s, data: %s, response_status_code: %s, response_content: %s"  # noqa
+                % (method, url, str(data), resp.status_code, content))
             return False, None
 
         return True, resp.json()

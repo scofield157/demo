@@ -29,13 +29,21 @@ def home(request):
     """
     首页
     """
-    app_list = get_app_by_user(request.COOKIES['bk_token'])
-    for x in app_list:
-        if x.get("app_name") == u'\u8d44\u6e90\u6c60' or x.get("app_name") == 'Resource pool':
-            app_list.remove(x)
-            break
+    client = get_client_by_request(request)
+    kwargs = {
+        "fields": [
+            "bk_biz_id",
+            "bk_biz_name"
+        ]
+    }
+    res = client.cc.search_business(kwargs)
+    # app_list = get_app_by_user(request.COOKIES['bk_token'])
+    # for x in app_list:
+    #     if x.get("app_name") == u'\u8d44\u6e90\u6c60' or x.get("app_name") == 'Resource pool':
+    #         app_list.remove(x)
+    #         break
     return render_mako_context(request, '/home_application/index.html',
-                               {'bizList': app_list})
+                               {'bizList': res.get('data').get('info')})
 
 
 def history(request):
